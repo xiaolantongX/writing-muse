@@ -1629,7 +1629,7 @@ class MuseWindow(QWidget):
                 1400,
             )
             return
-        text, hwnd, anchor, has_selection = self._capture_quick_context()
+        text, hwnd, anchor, _has_selection = self._capture_quick_context()
         if len(text.strip()) < 2:
             self.ball.shake()
             QToolTip.showText(
@@ -1645,8 +1645,10 @@ class MuseWindow(QWidget):
         self._quick_anchor = anchor
         self.popup.hide()
         self.input.setPlainText(text)
-        mode = "换词润色" if has_selection else self._guess_mode(text)
-        if mode in MODES:
+        # 快捷键严格使用面板/球上当前选择的模式，不自动猜模式
+        mode = self.mode_box.currentText()
+        if mode not in MODES:
+            mode = MODES[0]
             self.mode_box.setCurrentText(mode)
         self.tabs.setCurrentIndex(0)
         self._run_generate(quick=True)
