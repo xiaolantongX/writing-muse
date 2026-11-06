@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp/
+pytest-cache-files-*/
+config.json
+history.json
+*.tmp
+muse.log
+test-aio.txt

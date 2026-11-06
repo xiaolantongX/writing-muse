@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="trayBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#343b4e"/>
+      <stop offset="1" stop-color="#161923"/>
+    </linearGradient>
+  </defs>
+  <circle cx="512" cy="512" r="470" fill="url(#trayBg)"/>
+  <circle cx="512" cy="512" r="470" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="16"/>
+
+  <path d="M512 206
+           C530 392 632 494 804 512
+           C632 530 530 632 512 804
+           C494 632 392 530 206 512
+           C392 494 494 392 512 206 Z"
+        fill="#ffffff"/>
+
+  <circle cx="512" cy="512" r="42" fill="#ffb800"/>
+  <circle cx="512" cy="512" r="42" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="5"/>
+</svg>

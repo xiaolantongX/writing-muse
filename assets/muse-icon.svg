@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="shadow" cx="50%" cy="54%" r="50%">
+      <stop offset="0.62" stop-color="#0b0d12" stop-opacity="0.30"/>
+      <stop offset="0.82" stop-color="#0b0d12" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#0b0d12" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glass" cx="36%" cy="28%" r="82%">
+      <stop offset="0" stop-color="#5a647d"/>
+      <stop offset="0.46" stop-color="#303748"/>
+      <stop offset="0.82" stop-color="#1b1f2a"/>
+      <stop offset="1" stop-color="#11131a"/>
+    </radialGradient>
+
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.26" stop-color="#818cf8"/>
+      <stop offset="0.50" stop-color="#f472b6"/>
+      <stop offset="0.72" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+
+    <radialGradient id="gloss" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="warm" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffb800" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ffb800" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e8f1ff"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="512" cy="524" r="500" fill="url(#shadow)"/>
+  <circle cx="512" cy="512" r="446" fill="url(#glass)"/>
+  <circle cx="512" cy="512" r="446" fill="none" stroke="url(#rim)" stroke-width="14"/>
+
+  <circle cx="512" cy="512" r="434" fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="2"/>
+  <ellipse cx="386" cy="326" rx="196" ry="126" fill="url(#gloss)" transform="rotate(-24 386 326)"/>
+  <circle cx="512" cy="512" r="238" fill="url(#warm)"/>
+
+  <path d="M512 236
+           C526 402 622 498 788 512
+           C622 526 526 622 512 788
+           C498 622 402 526 236 512
+           C402 498 498 402 512 236 Z"
+        fill="url(#spark)"/>
+
+  <path d="M512 540 L512 754" stroke="#191c25" stroke-opacity="0.92" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="34" fill="#ffb800"/>
+  <circle cx="512" cy="512" r="34" fill="none" stroke="#ffffff" stroke-opacity="0.40" stroke-width="4"/>
+</svg>
