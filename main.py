@@ -2,13 +2,13 @@
 """写作灵感 Muse —— 桌面悬浮写作助手（DeepSeek 云端版）。
 
 触发方式：
-1. 划词浮球：任意软件里选中文字，光标旁弹出「灵感」小圆球，点一下生成；
-2. 鼠标中键：选中文字后按中键直接生成；没选中则原样放行；
-3. 全局快捷键：默认 Ctrl+Alt+M；
-4. 托盘图标：空手呼出，或从剪贴板生成。
+1. 悬浮球：单击开/收完整面板，双击立即生成；
+2. 全局快捷键：Ctrl+Space 连按两下，读取光标上下文立即生成；
+3. 鼠标中键：选中文字后按中键生成（没选中则原样放行）；
+4. 托盘图标：从剪贴板生成，或打开完整面板。
 
-V2 相比 MVP：设置面板、6 种写作模式、候选角度标签、个人文风样本、
-历史记录、粘贴目标校验、超时/取消/脏输出解析等。
+V2 相比 MVP：悬浮球、灵感弹层、B 方案快捷键、X 文章文风、设置面板、
+6 种写作模式、候选角度标签、个人文风样本、历史记录、粘贴目标校验等。
 """
 from __future__ import annotations
 
@@ -647,20 +647,17 @@ class MuseSignals(QObject):
     middle_down = Signal()
     middle_up = Signal()
     left_down = Signal(int, int)
-    left_up_drag = Signal(int, int)
     typing = Signal(str)
     hotkey = Signal()
 
 
 class GlobalInput:
-    """全局输入监听：鼠标划词/中键、键盘打字、全局快捷键，自带注入过滤。"""
+    """全局输入监听：鼠标中键、键盘打字、全局快捷键，自带注入过滤。"""
 
     def __init__(self, signals: MuseSignals):
         self.signals = signals
         self.mouse_listener = None
         self.kb_listener = None
-        self._ldown_xy: tuple[int, int] | None = None
-        self._ldown_t = 0.0
         self._kb_injected = False
         self._mods: set[str] = set()
         self._sequence: HotkeySequence | None = None
@@ -670,18 +667,7 @@ class GlobalInput:
         if data.flags & (LLMHF_INJECTED | LLMHF_LOWER_IL_INJECTED):
             return True
         if msg == WM_LBUTTONDOWN:
-            self._ldown_xy = (data.pt.x, data.pt.y)
-            self._ldown_t = time.time()
             self.signals.left_down.emit(data.pt.x, data.pt.y)
-        elif msg == WM_LBUTTONUP:
-            if self._ldown_xy:
-                held = time.time() - self._ldown_t
-                distance = abs(data.pt.x - self._ldown_xy[0]) + abs(
-                    data.pt.y - self._ldown_xy[1]
-                )
-                if held > 0.12 or distance > 6:
-                    self.signals.left_up_drag.emit(data.pt.x, data.pt.y)
-                self._ldown_xy = None
         elif msg == WM_MBUTTONDOWN:
             self.signals.middle_down.emit()
             if self.mouse_listener:
@@ -1153,7 +1139,6 @@ class MuseWindow(QWidget):
         self.setWindowIcon(make_icon())
 
         self._target_hwnd = 0
-        self._bubble_target_hwnd = 0
         self._req_id = 0
         self._requests: dict[int, dict] = {}
         self._workers: set[GenerateWorker] = set()
@@ -1164,7 +1149,7 @@ class MuseWindow(QWidget):
         self._quick_anchor = QPoint()
         self._quick_target = 0
 
-        # 划词取词状态
+        # 中键取词状态
         self._state = "idle"
         self._up_early = False
         self._cap_cb = None
@@ -1185,9 +1170,6 @@ class MuseWindow(QWidget):
         self._geom_timer.timeout.connect(self._save_geometry)
 
         self.history = load_history()
-
-        self.bubble = BubbleWindow()
-        self.bubble.clicked.connect(self.on_bubble_clicked)
 
         ball_cfg = CFG.get("ball", {})
         self.ball = BallWindow(
@@ -1252,7 +1234,7 @@ class MuseWindow(QWidget):
         self.input = QPlainTextEdit()
         self.input.setObjectName("input")
         self.input.setPlaceholderText(
-            "选中文字会自动填到这里；也可以粘贴一段草稿、一个标题、半句话…"
+            "粘贴一段草稿、一个标题、半句话… 也可以按 Ctrl+Space ×2 读取光标上下文"
         )
         self.input.setFixedHeight(92)
         layout.addWidget(self.input)
@@ -1464,7 +1446,6 @@ class MuseWindow(QWidget):
         if not preserve_target:
             self._target_hwnd = get_foreground_hwnd()
         self.setAttribute(Qt.WA_ShowWithoutActivating, False)
-        self.bubble.hide()
         self.show()
         self.raise_()
         self.activateWindow()
@@ -1525,35 +1506,7 @@ class MuseWindow(QWidget):
             return "换词润色"
         return "续写下文"
 
-    # ---------- 取词 ----------
-    def on_left_down(self, x: int, y: int):
-        if self.bubble.isVisible() and not self.bubble.frameGeometry().contains(
-            QPoint(x, y)
-        ):
-            self.bubble.hide()
-
-    def on_left_up_drag(self, x: int, y: int):
-        if self.isVisible() or self._state != "idle":
-            return
-        target = get_foreground_hwnd()
-        self._target_hwnd = target
-        self._begin_capture(
-            lambda text: self._bubble_ready(text, x, y, target), 600, "bubble"
-        )
-
-    def _bubble_ready(self, text: str, x: int, y: int, target: int):
-        if text.strip() and not self.isVisible():
-            self._bubble_target_hwnd = target
-            self.bubble.popup(x, y, text)
-
-    def on_bubble_clicked(self):
-        text = self.bubble.take_text()
-        if not text:
-            return
-        self.bubble.hide()
-        self._target_hwnd = self._bubble_target_hwnd or get_foreground_hwnd()
-        self._load_and_generate(text)
-
+    # ---------- 中键取词 ----------
     def on_middle_down(self):
         if self._state != "idle":
             return
@@ -1754,7 +1707,7 @@ class MuseWindow(QWidget):
             return
         context = self.input.toPlainText().strip()
         if not context:
-            self.status.setText("先选中文字，或把草稿/标题粘进来")
+            self.status.setText("先把草稿/标题粘进来，或用 Ctrl+Space ×2 读取光标上下文")
             return
         mode = self.mode_box.currentText()
         style = self.style_box.currentText()
@@ -2077,7 +2030,6 @@ class MuseWindow(QWidget):
                 worker.terminate()
                 worker.wait(600)
         self._workers.clear()
-        self.bubble.close()
         self.ball.hide()
         self.popup.hide()
         self.close()
@@ -2091,74 +2043,6 @@ class MuseWindow(QWidget):
     def closeEvent(self, event):
         event.ignore()
         self.hide()
-
-
-# ---------------------------------------------------------------------------
-# 划词浮球
-# ---------------------------------------------------------------------------
-class BubbleWindow(QWidget):
-    clicked = Signal()
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-            | Qt.WindowDoesNotAcceptFocus
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setFixedSize(54, 54)
-        self.setToolTip("点击生成灵感")
-        self._text = ""
-        self._timer = QTimer(self)
-        self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self.hide)
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(16)
-        shadow.setOffset(0, 2)
-        shadow.setColor(QColor(0, 0, 0, 90))
-        self.setGraphicsEffect(shadow)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#ffb800"))
-        painter.drawEllipse(4, 4, 46, 46)
-        painter.setPen(QColor("#ffffff"))
-        font = self.font()
-        font.setPixelSize(14)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(self.rect(), Qt.AlignCenter, "灵感")
-        painter.end()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.clicked.emit()
-            event.accept()
-
-    def popup(self, x: int, y: int, text: str):
-        self._text = text
-        screen = QApplication.screenAt(QPoint(x, y)) or QApplication.primaryScreen()
-        if screen is not None:
-            area = screen.availableGeometry()
-            pos_x = min(max(area.left() + 4, x + 16), area.right() - self.width() - 4)
-            pos_y = y - self.height() - 12
-            if pos_y < area.top() + 4:
-                pos_y = min(y + 20, area.bottom() - self.height() - 4)
-        else:
-            pos_x, pos_y = x + 16, y - 66
-        self.move(pos_x, pos_y)
-        self.show()
-        self.raise_()
-        self._timer.start(12000)
-
-    def take_text(self) -> str:
-        text, self._text = self._text, ""
-        return text
 
 
 # ---------------------------------------------------------------------------
@@ -2679,7 +2563,7 @@ class TrayApp:
         self.win.notice.connect(self._notify)
 
         self.tray = QSystemTrayIcon(make_icon(), self.app)
-        self.tray.setToolTip("写作灵感 Muse — 悬浮球 / Ctrl+Space ×2 / 划词")
+        self.tray.setToolTip("写作灵感 Muse — 悬浮球 / Ctrl+Space ×2 / 中键")
         self.tray_menu = QMenu()
         menu = self.tray_menu
         menu.addAction("显示 / 隐藏 Muse", self.win.toggle_show)
@@ -2696,11 +2580,9 @@ class TrayApp:
         self.signals = MuseSignals()
         self.signals.middle_down.connect(self.win.on_middle_down)
         self.signals.middle_up.connect(self.win.on_middle_up)
-        self.signals.left_down.connect(self.win.on_left_down)
         self.signals.left_down.connect(
             lambda x, y: self.win.popup.hide_if_outside(x, y)
         )
-        self.signals.left_up_drag.connect(self.win.on_left_up_drag)
         self.signals.typing.connect(self.win.on_typing)
         self.signals.hotkey.connect(self.win.trigger_quick)
         self.win.ball_menu_requested.connect(self._show_ball_menu)
